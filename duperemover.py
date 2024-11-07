@@ -31,11 +31,16 @@ if not os.path.exists(config_file):
 # Read the config file and process each line
 with open(config_file, 'r') as file:
     for line in file:
-        # Split line into game name and file path
+        # fix for missing VCD as it was looking for the same name for the ELF and VCD
         try:
             game_name, file_path = line.strip().split('=')
             file_name = os.path.basename(file_path)
-            vcd_filename = file_name.replace('.ELF', '.VCD')
+
+            if file_name.startswith('XX.'):
+                vcd_filename = file_name[3:].replace('.ELF', '.VCD')
+            else:
+                vcd_filename = file_name.replace('.ELF', '.VCD')
+
         except ValueError:
             print(f"Skipping malformed line: {line.strip()}")
             continue
