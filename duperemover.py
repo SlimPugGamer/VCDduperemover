@@ -1,7 +1,6 @@
 import os
 import argparse
 
-# Set up command-line argument parsing
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-d", "--directory", 
@@ -16,22 +15,18 @@ parser.add_argument(
     help="Path to the configuration file."
 )
 
-# Parse the arguments
 args = parser.parse_args()
 vcd_directory = args.directory
 config_file = args.config
 
-# Track duplicates for any VCD file based on game name
 game_vcd_tracker = {}
-# Check if the configuration file exists
+
 if not os.path.exists(config_file):
     print(f"Configuration file {config_file} not found.")
     exit()
 
-# Read the config file and process each line
 with open(config_file, 'r') as file:
     for line in file:
-        # fix for missing VCD as it was looking for the same name for the ELF and VCD
         try:
             game_name, file_path = line.strip().split('=')
             file_name = os.path.basename(file_path)
@@ -45,24 +40,40 @@ with open(config_file, 'r') as file:
             print(f"Skipping malformed line: {line.strip()}")
             continue
 
-        # Full path to the VCD file
         vcd_path = os.path.join(vcd_directory, vcd_filename)
 
-        # Check if the VCD file exists
         if os.path.exists(vcd_path):
             print(f"Found VCD file for {game_name}: {vcd_filename}")
+            file_size = os.path.getsize(vcd_path)
+
+            if file_size == 0:
+                print(f"Warning: {vcd_filename} is empty.")
+                user_input = input(f"Do you want to delete the empty VCD file {vcd_filename}? (y/n): ")
+                if user_input.lower() == 'y':
+                    try:
+                        os.remove(vcd_path)
+                        print(f"Deleted {vcd_filename}")
+                    except FileNotFoundError:
+                        print(f"{vcd_filename} not found, possibly already deleted.")
+            else:
+                print(f"{vcd_filename} size is {file_size} bytes.")
+
+
+                if game_name in game_vcd_tracker:
+                    existing_vcd_path = game_vcd_tracker[game_name]
+                    existing_file_size = os.path.getsize(existing_vcd_path)
+
+                    if file_size == existing_file_size:
+                        print(f"Warning: {vcd_filename} is the same size as the existing VCD for {game_name}.")
+                        user_input = input(f"Do you want to delete the duplicate VCD file {vcd_filename}? (y/n): ")
+                        if user_input.lower() == 'y':
+                            try:
+                                os.remove(vcd_path)
+                                print(f"Deleted duplicate {vcd_filename}")
+                            except FileNotFoundError:
+                                print(f"{vcd_filename} not found, possibly already deleted.")
+                else:
+                    game_vcd_tracker[game_name] = vcd_path
+
         else:
             print(f"Missing VCD file for {game_name}: {vcd_filename}")
-
-        # Track and handle duplicates for any game
-        if game_name in game_vcd_tracker:
-            # If duplicate found, delete it
-            print(f"Deleting duplicate VCD file for {game_name}: {vcd_filename}")
-            try:
-                os.remove(vcd_path)
-                print(f"Deleted {vcd_filename}")
-            except FileNotFoundError:
-                print(f"Duplicate VCD {vcd_filename} not found, possibly already deleted.")
-        else:
-            # First occurrence, add to tracker
-            game_vcd_tracker[game_name] = vcd_path
